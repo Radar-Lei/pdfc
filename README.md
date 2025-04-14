@@ -1,7 +1,7 @@
 
-# PDF Compressor
+# File Compressor
 
-A tool to compress PDF files, reducing their file size.
+A tool to compress PDF and image files, reducing their file size.
 
 ## Installation
 
@@ -15,7 +15,7 @@ A tool to compress PDF files, reducing their file size.
     *   **Windows:** Download and install from the [official website](https://www.ghostscript.com/).
     *   **(Other Linux distributions might use package managers like apt or yum)**
 
-*   **pngquant**: Used for optimizing images within PDFs.
+*   **pngquant**: Used for optimizing PNG images (both standalone and within PDFs).
     *   **macOS (using Homebrew):**
         ```bash
         brew install pngquant
