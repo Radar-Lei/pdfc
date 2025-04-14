@@ -148,10 +148,43 @@ def compress_image_backend(input_path, output_path, custom_dpi, png_quality, pro
         # --- PNG Compression using pngquant ---
         quality_str = f"(质量: {png_quality})" if png_quality is not None else "(默认质量)"
         progress_signal.emit(f"  使用 pngquant 压缩 PNG: {base_name} {quality_str}")
-        pngquant_path = "pngquant" # Assume pngquant is in PATH
+
+        # Determine pngquant path dynamically
+        pngquant_name = 'pngquant'
+        if hasattr(sys, '_MEIPASS'):
+            # Running in a PyInstaller bundle
+            # Binaries are often placed in Contents/Frameworks relative to Contents/MacOS (_MEIPASS)
+            pngquant_path = os.path.join(sys._MEIPASS, '..', 'Frameworks', pngquant_name)
+            if not os.path.exists(pngquant_path):
+                 # Fallback check in Resources
+                 pngquant_path_res = os.path.join(sys._MEIPASS, '..', 'Resources', pngquant_name)
+                 if os.path.exists(pngquant_path_res):
+                      pngquant_path = pngquant_path_res
+                      print(f"Using bundled pngquant (Resources link): {pngquant_path}")
+                 else:
+                      # Fallback check directly in _MEIPASS
+                      pngquant_path_macos = os.path.join(sys._MEIPASS, pngquant_name)
+                      if os.path.exists(pngquant_path_macos):
+                           pngquant_path = pngquant_path_macos
+                           print(f"Using bundled pngquant (MacOS dir): {pngquant_path}")
+                      else:
+                           progress_signal.emit(f"错误: 未在应用程序包的 Frameworks, Resources, 或 MacOS 目录中找到 pngquant。")
+                           return False
+            else:
+                 print(f"Using bundled pngquant: {pngquant_path}")
+        else:
+            # Running as a script, rely on PATH or check explicitly
+            pngquant_path_which = shutil.which("pngquant")
+            if pngquant_path_which:
+                pngquant_path = pngquant_path_which
+            else: # Not found via shutil.which
+                # Fallback for safety, though FileNotFoundError should catch it later
+                pngquant_path = pngquant_name # Keep original behavior if not found in PATH
+                progress_signal.emit(f"警告: 未在系统 PATH 中找到 pngquant。将尝试直接调用 '{pngquant_name}'。")
+
 
         command = [
-            pngquant_path,
+            pngquant_path, # Use the determined path
             "--force",        # Overwrite output file if it exists
             "--skip-if-larger", # Don't save if the output is larger
             # "--strip",        # Remove metadata (optional)
@@ -223,7 +256,8 @@ def compress_image_backend(input_path, output_path, custom_dpi, png_quality, pro
         except FileNotFoundError:
              error_details = traceback.format_exc()
              print(f"--- pngquant Not Found Error --- \n{error_details}", file=sys.stderr)
-             progress_signal.emit(f"错误: 未找到 pngquant。请确保已安装并添加到系统 PATH。")
+             # Make the error message more specific about the path checked
+             progress_signal.emit(f"错误: 未找到 pngquant 可执行文件 ({pngquant_path})。请确保已安装或包含在应用包中。")
              return False
         except Exception as e:
              error_details = traceback.format_exc()

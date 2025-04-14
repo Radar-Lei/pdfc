@@ -75,12 +75,47 @@ def compress(input_file_path, output_file_path, power=0):
 
 
 def get_ghostscript_path():
-    gs_names = ["gs", "gswin32", "gswin64"]
-    for name in gs_names:
-        if shutil.which(name):
-            return shutil.which(name)
+    """Dynamically finds the Ghostscript executable, prioritizing the bundled one."""
+    gs_name = "gs" # Standard name on macOS/Linux
+
+    # Check if running in a PyInstaller bundle
+    if hasattr(sys, '_MEIPASS'):
+        # Binaries are often placed in Contents/Frameworks relative to Contents/MacOS (_MEIPASS)
+        bundled_gs_path = os.path.join(sys._MEIPASS, '..', 'Frameworks', gs_name)
+        if os.path.exists(bundled_gs_path):
+            print(f"Using bundled Ghostscript: {bundled_gs_path}")
+            return bundled_gs_path
+        else:
+             # Fallback check in Resources just in case structure changes
+             bundled_gs_path_res = os.path.join(sys._MEIPASS, '..', 'Resources', gs_name)
+             if os.path.exists(bundled_gs_path_res):
+                 print(f"Using bundled Ghostscript (Resources link): {bundled_gs_path_res}")
+                 return bundled_gs_path_res
+             # Fallback check directly in _MEIPASS (less likely for binaries)
+             bundled_gs_path_macos = os.path.join(sys._MEIPASS, gs_name)
+             if os.path.exists(bundled_gs_path_macos):
+                 print(f"Using bundled Ghostscript (MacOS dir): {bundled_gs_path_macos}")
+                 return bundled_gs_path_macos
+
+             print(f"Warning: Running in bundle, but bundled Ghostscript not found in Frameworks, Resources, or MacOS dir. Falling back to PATH search.")
+
+    # If not bundled or bundled version not found, search PATH
+    gs_path_in_path = shutil.which(gs_name)
+    if gs_path_in_path:
+        print(f"Using Ghostscript from PATH: {gs_path_in_path}")
+        return gs_path_in_path
+
+    # Try Windows names as a last resort if the primary search fails (less likely on macOS but for completeness)
+    gs_names_fallback = ["gswin32", "gswin64"]
+    for name in gs_names_fallback:
+        fallback_path = shutil.which(name)
+        if fallback_path:
+            print(f"Using fallback Ghostscript from PATH: {fallback_path}")
+            return fallback_path
+
+    # If nothing found
     raise FileNotFoundError(
-        f"No GhostScript executable was found on path ({'/'.join(gs_names)})"
+        f"Ghostscript executable ('{gs_name}' or fallbacks) not found in application bundle or system PATH."
     )
 
 
