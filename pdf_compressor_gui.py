@@ -32,22 +32,8 @@ except ImportError:
     PILLOW_AVAILABLE = False
     # We'll show a message later if needed
 
-# 尝试从 pdf_compressor 导入 compress 和 get_ghostscript_path 函数
-# 如果直接运行 GUI 文件，可能需要调整路径或确保 pdf_compressor 在 Python 路径中
-try:
-    from pdf_compressor import compress as compress_pdf, get_ghostscript_path
-except ImportError:
-    QMessageBox.critical(None, "错误", "无法导入 'pdf_compressor.py'。请确保它在同一目录或 Python 路径中。")
-    sys.exit(1)
-
-# 检查 Ghostscript 是否安装
-try:
-    GS_PATH = get_ghostscript_path()
-except FileNotFoundError:
-     QMessageBox.critical(None, "错误", "未找到 Ghostscript 可执行文件。请确保已安装 Ghostscript 并将其添加至系统 PATH。")
-     sys.exit(1)
-
 # --- Removed CompressionThread Class Definition ---
+# pdf_compressor import and GS_PATH check moved to main_gui
 
 
 class CompressorGUI(QWidget): # Rename class for generality
@@ -161,6 +147,32 @@ def main_gui():
     app = QApplication(sys.argv)
     # 你可以设置一个样式表，例如 'Fusion'
     # app.setStyle('Fusion')
+
+    # --- Moved Checks Inside main_gui ---
+    # 1. 尝试从 pdf_compressor 导入 compress 和 get_ghostscript_path 函数
+    try:
+        # It's better practice to import the module first, then access attributes
+        import pdf_compressor
+        # Now check for the specific functions if needed, or just use them later
+        # compress_pdf = pdf_compressor.compress
+        # get_ghostscript_path = pdf_compressor.get_ghostscript_path
+    except ImportError:
+        # Pass None as parent since the main window doesn't exist yet
+        QMessageBox.critical(None, "Import 错误", "无法导入 'pdf_compressor.py'。\n请确保它与 'pdf_compressor_gui.py' 在同一目录或位于 Python 路径中。")
+        sys.exit(1) # Exit after showing the message
+
+    # 2. 检查 Ghostscript 是否安装 (using the imported function)
+    try:
+        # Use the function imported via pdf_compressor module
+        GS_PATH = pdf_compressor.get_ghostscript_path()
+        # Optionally store GS_PATH somewhere accessible if needed later,
+        # maybe as a global variable or passed to the GUI instance.
+        # For now, just checking is enough.
+    except FileNotFoundError:
+         # Pass None as parent
+         QMessageBox.critical(None, "错误", "未找到 Ghostscript 可执行文件。请确保已安装 Ghostscript 并将其添加至系统 PATH。")
+         sys.exit(1) # Exit after showing the message
+    # --- End Moved Checks ---
     ex = CompressorGUI() # Use updated class name
     ex.show()
     sys.exit(app.exec())
